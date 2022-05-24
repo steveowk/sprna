@@ -1,7 +1,6 @@
 import argparse
 import random
 import os
-import random
 from os import path
 from utils import *
 from copy import deepcopy
