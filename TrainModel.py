@@ -4,6 +4,7 @@ from torch.optim import SGD, Adam
 import math
 import os
 from os.path import exists
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 class Model():
     def __init__(self,
@@ -13,9 +14,7 @@ class Model():
     criterion,
     model_filename,
     batch_size,
-    lr,
-    after,
-    global_step
+    lr
     ):
         self.batch_size = batch_size
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -26,10 +25,9 @@ class Model():
         self.regression = True
         self.bestloss = math.inf
         self.model_filename = model_filename    
-        self.load_model()  
-        self.after = after  
-        self.global_step = global_step      
-    
+        self.load_model()    
+   
+
     def get_loss(self,criterion):
         if criterion == "mse":return nn.MSELoss()
         return nn.CrossEntropyLoss()
@@ -50,6 +48,7 @@ class Model():
         for epx in range(self.epochs):
             self.train(epx)    
             self.test(epx)
+            
     
     def train(self, epoch):
         self.model.train()
@@ -70,14 +69,13 @@ class Model():
             outputs = self.model(inputs)
             loss = self.criterion(outputs, targets)
             loss = loss.detach().item()
-            #if self.bestloss>loss:
             self.bestloss = loss
             state = {
                 'model': self.model.state_dict(),
                 'loss': self.bestloss,
             }
             torch.save(state, self.model_filename)
-        if epoch%self.after==0:print(f"End of Epoch {epoch} loss {loss} best {self.bestloss}")
+        if epoch%20==0:print(f"End of Epoch {epoch} loss {loss} best {self.bestloss}")
     
     def predict(self,x):
         self.model.eval()

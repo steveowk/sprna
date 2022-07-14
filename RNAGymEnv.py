@@ -18,7 +18,7 @@ class RNAEnv(Env):
         self.paired_sites  = P
         self.paired_loc, self.unpaired_loc = getAllPairings(target_seq)
         self.designed_seq = deepcopy(self.target_seq)
-        self.mutation_threshold = 10
+        self.mutation_threshold = 5
         self.move_locations = self.paired_loc+self.unpaired_loc 
         self.binary_codes = binaryCodings(single_sites+paired_sites)
         self.current_site = None
@@ -115,6 +115,7 @@ class RNAEnv(Env):
     
     def localSearch(self):
         if self.hammingLoss()==0.0:return
+        print("called LS .. ")
         target = self.getTarget()
         folded_design = self.getDesignedFold()
         hamming_distance = self.hamming_distance(folded_design, target)

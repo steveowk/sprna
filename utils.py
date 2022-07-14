@@ -15,49 +15,50 @@ single_sites_ix = {ix:x for ix, x in enumerate(single_sites)}
 paired_sites_ix = {ix:x for ix, x in enumerate(paired_sites)}
 all_sites_ix = {ix:x for ix, x in enumerate(single_sites+paired_sites)}
 
-EPS_START = 0.90
-EPS_END = 0.05
-EPS_DECAY = 200
+EPS_START = 0.97
+EPS_END = 0.03
+EPS_DECAY = 5000
 steps_done = 0
 
 
-def sampleReplay(positive, negative, sz):
-    sample_size = sz
-    if len(positive) >= sample_size:
-        neg_sample_train = random.sample(negative, sample_size)
-        pos_sample_train = random.sample(positive, sample_size)
-    elif len(positive) == 0: # if there is no positive yet
-        sample_size = 10
-        neg_sample_train = random.sample(negative, sample_size)
+def sampleReplay(positive, negative, sample_sz):
+    if len(positive) >= sample_sz:
+        neg_sample_train = random.sample(negative, sample_sz)
+        pos_sample_train = random.sample(positive, sample_sz)
+    elif len(positive) == 0: #if there is no positive yet
+        sample_sz = 10
+        neg_sample_train = random.sample(negative, sample_sz)
         pos_sample_train = []
     else:
-        sample_size = len(positive)
-        neg_sample_train = random.sample(negative, sample_size)
-        pos_sample_train = random.sample(positive, sample_size)
+        sample_sz = len(positive)
+        neg_sample_train = random.sample(negative, sample_sz)
+        pos_sample_train = random.sample(positive, sample_sz)
     
     X , y = [], []
     for d in pos_sample_train+neg_sample_train:
         X.append(d[0])
         y.append(d[1])        
-    X = pad_sequence(X, padding_value=-1)
+    X = pad_sequence(X, padding_value=-1) # batching the workload
     X = X.view(X.size(1),1,X.size(0),X.size(2))
     y = torch.cat(y).view(-1, 1)
     assert(X.size(0)==y.size(0))
-    return X,y
+    return X, y
 
 def evalArgmax(preds):
-    out = nn.Softmax(dim=0)(preds)
-    return torch.argmax(out).item()
+    with torch.no_grad():
+        out = nn.Softmax(dim=0)(preds)
+        return torch.argmax(out).item()
+
+def explore():
+    global steps_done
+    steps_done+=2
+    eps_threshold = EPS_END+(EPS_START-EPS_END)*math.exp(-1.*steps_done/EPS_DECAY)
+    if random.random() > eps_threshold:return False
+    return True
 
 def decayingEgreedy(preds):
-    global steps_done
-    eps_threshold = EPS_END+(EPS_START-EPS_END)*math.exp(-1.*steps_done/EPS_DECAY)
-    steps_done+=1
-    if random.random() > eps_threshold:
-        with torch.no_grad():
-            out = nn.Softmax(dim=0)(preds)
-            return torch.argmax(out).item()
-    return random.choice(list(range(len(preds))))
+    if explore(): return random.choice(list(range(len(preds))))
+    return evalArgmax(preds)
 
 def trackEvalResults():
     track_results = {
